@@ -10,6 +10,8 @@
  
    Senseo öffnen
    https://www.youtube.com/watch?v=nDzAkrEa5Yc
+   
+   Die Änderung am 230 V Stromkreis sollte durch einen Fachmann durchgeführt werden!
 
 
 englisch
@@ -23,3 +25,5 @@ englisch
  
    Open Senseo
    https://www.youtube.com/watch?v=nDzAkrEa5Yc
+   
+   The change to the 230 V circuit should be carried out by a electrician!

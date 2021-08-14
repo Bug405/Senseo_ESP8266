@@ -4,7 +4,7 @@
 const char* ssid = "your-ssid";                                       //the ssid of wifi
 const char* password = "your-password";                               //the password of wifi
 
-WiFiServer server(8266);                                              //start server on port 80
+WiFiServer server(8266);                                              //start server on port 8266
 
 WiFiClient clients[3];                                                //clients array
 

@@ -1,8 +1,8 @@
 #include "ESP8266WiFi.h"
 #include "SenseoState.h"
 
-const char* ssid = "FRITZ!Box 6660 Cable ZL";                         //the ssid of wifi
-const char* password = "5ir04ixu6cc9hktkd2mr";                        //the password of wifi
+const char* ssid = "your-ssid";                                       //the ssid of wifi
+const char* password = "your-password";                               //the password of wifi
 
 WiFiServer server(8266);                                              //start server on port 80
 

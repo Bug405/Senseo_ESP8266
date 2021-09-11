@@ -24,7 +24,7 @@ import com.example.senseo.MyObjects.Settings;
 
 public class MainActivity extends AppCompatActivity implements Client.ClientListener {
 
-    private SettingsFragment settingsFragmet = new SettingsFragment();
+    private SettingsFragment settingsFragment;
 
     private String title;
 
@@ -41,18 +41,21 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
         title = getTitle().toString();
 
+        //initialize settings fragment
+        settingsFragment = new SettingsFragment();
+
+        //settings Listener
+        settingsFragment.setSendSettings(onSendSettings);
+
         //load settings
         Object object = new MyFile().loadFile(getApplicationContext(), "Settings.txt", true);
 
-        if(object != null && object instanceof Settings) {
+        if(object instanceof Settings) {
             settings = (Settings) object;
-            settingsFragmet.setSettings(settings);
+            settingsFragment.setSettings(settings);
         } else {
             settings = new Settings();
         }
-
-        //settings Listener
-        settingsFragmet.setSendSettings(onSendSettings);
 
         //start client
         client = new Client(settings.getIp(), port, true);
@@ -89,7 +92,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.ItemSettings) {
-            openFragment(settingsFragmet);
+            openFragment(settingsFragment);
         }
         return true;
     }
@@ -118,7 +121,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         client.start();
     };
 
-    //Set senseo on / off
+    //set senseo on / off
     private View.OnClickListener powerListener = e-> {
 
         //send msg to server
@@ -127,8 +130,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         }
 
         //if client is not connect, show toast "nicht Verbunden"
-        if(getTitle().toString().contains("nicht Verbunden")){
-            Toast.makeText(getApplicationContext(), "nicht Verbunden", Toast.LENGTH_LONG).show();
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
     };
 
@@ -141,8 +144,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         }
 
         //if client is not connect, show toast "nicht Verbunden"
-        if(getTitle().toString().contains("nicht Verbunden")){
-            Toast.makeText(getApplicationContext(), "nicht Verbunden", Toast.LENGTH_LONG).show();
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
     };
 
@@ -155,8 +158,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         }
 
         //if client is not connect, show toast "nicht Verbunden"
-        if(getTitle().toString().contains("nicht Verbunden")){
-            Toast.makeText(getApplicationContext(), "nicht Verbunden", Toast.LENGTH_LONG).show();
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
     };
 
@@ -174,7 +177,6 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
         //state heating or make coffee
         else if(message.equals("busy")){
-            //setPowerButton(getResources().getColor(R.color.orange));
             setPowerButton(Color.YELLOW);
         }
 
@@ -191,7 +193,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
             if(connected){
                 setTitle(title);
             } else {
-                setTitle(title + " - nicht Verbunden");
+                setTitle(title + " - " + getString(R.string.connected));
 
                 setPowerButton(Color.LTGRAY);
             }
@@ -246,8 +248,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     //else close app
     @Override
     public void onBackPressed() {
-        if(settingsFragmet.isFragmentActive()){
-           settingsFragmet.closeFragment();
+        if(settingsFragment.isFragmentActive()){
+           settingsFragment.closeFragment();
         } else {
             finish();
         }

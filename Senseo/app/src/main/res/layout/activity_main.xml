@@ -24,19 +24,19 @@
             android:id="@+id/btn_oneCup"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="eine tasse"/>
+            android:text="@string/one_cup"/>
 
         <Button
             android:id="@+id/btn_power"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="power"/>
+            android:text="@string/power"/>
 
         <Button
             android:id="@+id/btn_twoCups"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:text="zwei tassen"/>
+            android:text="@string/two_cups"/>
     </GridLayout>
 
 

@@ -4,7 +4,7 @@
 const char* ssid = "your-ssid";                                       //the ssid of wifi
 const char* password = "your-password";                               //the password of wifi
 
-WiFiServer server(8266);                                              //start server on port 8266
+WiFiServer server(8266);                                              //start server on port 80
 
 WiFiClient clients[3];                                                //clients array
 
@@ -45,7 +45,7 @@ void setup() {
 
   WiFi.begin(ssid, password);                                         //intialisize WiFi
 
-  WiFi.hostname(hostname);                                            //set WiFi hostname
+  //WiFi.hostname(hostname);                                            //set WiFi hostname
 
   while(WiFi.status() != WL_CONNECTED){                               //wait for WiFi connection
     delay(1000);
@@ -69,12 +69,18 @@ void readClient(WiFiClient client){
     while(client.available() > 0)
     {
       msg = client.readStringUntil('\n');                             //read line from msg
-      //Serial.println(msg);      
+      //Serial.println(msg);
+    } 
+
+    //answer ping request 
+    if(msg.equals("ping")){
+      Serial.println("get ping");
+      client.println("get ping");
     }
 
     //if msg is "power" press power button
     //for 300 ms
-    if(msg == "power"){
+    if(msg.equals("power")){
       Serial.println("press power button");
 
       digitalWrite(power_button, LOW);                                //press power button         
@@ -84,7 +90,7 @@ void readClient(WiFiClient client){
 
     //if msg is "one_cup" press one cup button
     //for 300 ms
-    if(msg == "one_cup"){
+    if(msg.equals("one_cup")){
       Serial.println("press one cup button");
 
       digitalWrite(oneCup_button, LOW);                               //press one cup button 
@@ -94,7 +100,7 @@ void readClient(WiFiClient client){
 
     //if msg is "two_cups" press two cups button
     //for 300 ms
-    if(msg == "two_cups"){
+    if(msg.equals("two_cups")){
       Serial.println("press two cups button");   
 
       digitalWrite(twoCups_button, LOW);                              //press two cups button
@@ -156,7 +162,7 @@ void loop() {
   String state = senseoState.getState(state_input);
 
   //if senseo has a new state, send the state to all connected clients  
-  if(senseo_state != state){
+  if(!senseo_state.equals(state)){
     senseoState.setSenseoState(state);                               //set new state in senseo
 
     for(int z = 0; z < 3; z++){

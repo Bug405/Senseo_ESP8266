@@ -37,49 +37,50 @@ public class SettingsFragment extends Fragment {
         // Inflate the layout for this fragment
         View v = inflater.inflate(R.layout.settings_layout, container, false);
 
-        //Textfelder laden
+        //load ip address
         et_ip = v.findViewById(R.id.et_ip);
 
         if(settings != null && settings.getIp() != null) {
             et_ip.setText(settings.getIp());
         }
 
+        //initialize button listeners
         v.findViewById(R.id.btn_back).setOnClickListener(onClick_btn_back);
         v.findViewById(R.id.btn_save).setOnClickListener(onClick_btn_save);
 
         return v;
     }
 
-    //Einstellungen speichern
+    //save new settings
     private View.OnClickListener onClick_btn_save = e -> {
         Settings settings = new Settings();
         settings.setIp(et_ip.getText().toString());
 
-        //Settings an MainActivity übergeben
+        //send new settings to MainActivity
         if(sendSettings != null){
             sendSettings.onSendSettings(settings);
         }
 
-        //Settings speichern
+        //save settings file
         new MyFile().saveFile(getContext(),"Settings.txt", settings, true);
     };
 
-    //Einstellungen schließen
+    //close settings
     private View.OnClickListener onClick_btn_back = e -> {
         closeFragment();
     };
 
-    //Set setttings
+    //set setttings
     public void setSettings(Settings settings){
         this.settings = settings;
     }
 
-    //Ist Fragment geöffnet
+    //is fragment  active
     public boolean isFragmentActive(){
         return fragmentActive;
     }
 
-    //Fragment schließen und zur MainActivity zurückkehren
+    //close fragment and get back to MainActivity
     public void closeFragment(){
         FragmentManager manager = getFragmentManager();
         FragmentTransaction transaction = manager.beginTransaction();
@@ -92,12 +93,11 @@ public class SettingsFragment extends Fragment {
     public void onResume() {
         super.onResume();
         fragmentActive = true;
-
     }
 
     @Override
     public void onDestroy() {
-        fragmentActive = false;
         super.onDestroy();
+        fragmentActive = false;
     }
 }

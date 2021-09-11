@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">Senseo</string>
+
+    <string name="connected">nicht Verbunden</string>
+
+    <string name="power">power</string>
+    <string name="one_cup">eine tasse</string>
+    <string name="two_cups">zwei tassen</string>
+
+    <string name="settings">einstellungen</string>
+    <string name="address">IP Adresse</string>
+    <string name="save">speichern</string>
+    <string name="back">zurück</string>
+</resources>

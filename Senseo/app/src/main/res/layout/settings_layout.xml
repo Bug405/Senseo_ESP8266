@@ -22,14 +22,14 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Einstellungen"
+                android:text="@string/settings"
                 android:textAlignment="center"
                 android:textSize="24sp" />
 
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="IP Adresse Raspberry"
+                android:text="@string/address"
                 tools:textColor="@android:color/white"/>
 
             <EditText
@@ -41,13 +41,13 @@
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="Speichern"/>
+                android:text="@string/save"/>
 
             <Button
                 android:id="@+id/btn_back"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:text="zurück"/>
+                android:text="@string/back"/>
 
         </LinearLayout>
     </ScrollView>

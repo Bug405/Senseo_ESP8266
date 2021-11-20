@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <title id=title>Senseo - Settings</title>
+  <link rel="icon" href="data:,">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <link rel="stylesheet" type="text/css" href="style_settings.css">
+  <script src="webSocket.js"></script>  
+  <script src="settings.js"></script>  
+</head>
+
+<body>
+  <h1>Senseo Settings</h1>
+
+  <a>
+    <form method="get" action="https://github.com/Bug405/Senseo_ESP8266/raw/main/Senseo.apk">
+      <button id="back_button">get Senseo.apk</button>
+    </form>
+  </a>
+
+  <h1>Language</h1>
+
+  <div id="settings">
+    <button id="language_button">set english</button>
+  </div>
+
+  <h1>WiFi</h1>
+
+  <div id="settings">
+    <label for="ssid">SSID</label>
+    <input value="" id="ssid" placeholder="SSID">
+  </div>
+
+  <div id="settings">
+    <label for="password">PASSWORD</label>
+    <input type="password" value="" id="password" placeholder="PASSWORD">
+  </div>
+
+  <div id="settings">
+    <button id="save_button">save</button>
+  </div>
+</body>
+</html>

@@ -18,9 +18,9 @@ import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.example.clientforesp8266.Client;
 import com.example.myfiles.MyFile;
 import com.example.senseo.MyObjects.Settings;
+import com.example.websocketclient.Client;
 
 public class MainActivity extends AppCompatActivity implements Client.ClientListener {
 
@@ -32,7 +32,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
     private Client client;
 
-    private int port = 8266;
+    private String port = "80";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -58,10 +58,10 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         }
 
         //start client
-        client = new Client(settings.getIp(), port, true);
-        client.setClientListener(this);
-        client.setMessage("getState");
-        client.start();
+        client = new Client(settings.getIp(), port);
+        client.setListener(this);
+        client.setMsg("INFO");
+        client.connect();
 
         //load background picture
         setBackgroundHeight(findViewById(R.id.iv_background));
@@ -114,11 +114,12 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     private SettingsFragment.onSendSettings onSendSettings = settings -> {
         this.settings = settings;
 
-        client.closeSocket();
+        client.close();
 
-        client = new Client(settings.getIp(), port, true);
-        client.setClientListener(this);
-        client.start();
+        client = new Client(settings.getIp(), port);
+        client.setListener(this);
+        client.setMsg("INFO");
+        client.connect();
     };
 
     //set senseo on / off
@@ -126,7 +127,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
         //send msg to server
         if(client != null){
-            client.sendMsg("power");
+            client.sendMessage("power");
         }
 
         //if client is not connect, show toast "nicht Verbunden"
@@ -140,7 +141,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
         //send msg to server
         if(client != null){
-            client.sendMsg("one_cup");
+            client.sendMessage("one_cup");
         }
 
         //if client is not connect, show toast "nicht Verbunden"
@@ -154,7 +155,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
         //send msg to server
         if(client != null){
-            client.sendMsg("two_cups");
+            client.sendMessage("two_cups");
         }
 
         //if client is not connect, show toast "nicht Verbunden"
@@ -164,13 +165,13 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     };
 
     @Override
-    public void onClientGetMessage(String message) {
+    public String onClientGetMessage(String message) {
         //state ready
         if(message.equals("ready")){
             setPowerButton(Color.GREEN);
         }
 
-        //state of
+        //state off
         else if(message.equals("off")){
             setPowerButton(Color.LTGRAY);
         }
@@ -184,6 +185,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         else if(message.equals("failure")){
             setPowerButton(Color.RED);
         }
+
+        return new String();
     }
 
     //client state
@@ -231,8 +234,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     protected void onResume() {
         super.onResume();
 
-        if(client != null && client.isclosed()){
-            client.reconnect();
+        if(client != null && client.isClosed()) {
+            client.connect();
         }
     }
 
@@ -241,7 +244,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     protected void onPause() {
         super.onPause();
 
-        client.closeSocket();
+        client.close();
     }
 
     //if settings fragment is open close settings fragment

@@ -8,7 +8,7 @@
 #include "SenseoState.h"
 
 
-// Initialize WiFi
+//Initialize WiFi
 char *password = "SenseoESP8266";                                                     //AP password
 char *mySsid = "SENSEO_CONFIG";                                                       //AP ssid                               
 
@@ -18,17 +18,17 @@ IPAddress netmask(255,255,255,0);                                               
 
 String hostname = "Senseo";                                                           //hostname
 
-// Initialize async webserver
+//Initialize async webserver
 AsyncWebServer server(80);                                                            //webserver on port 80
 AsyncWebSocket socket("/ws");                                                         //socket
 
-// webnserver login
+//webserver login
 const char* user = "senseo";                                                          //webserver user
 const char* pwd = "senseo";                                                           //webserver password
 
 String lang = "ger";                                                                  //language for website
 
-// config files
+//config files
 String configWifI = "/configWifI.json";                                               //wifi config file name
 String configLang = "/configLang.json";                                               //language config file name
 

@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include "ESPAsyncWebServer.h"
 #include <ESPAsyncTCP.h>
 #include <FS.h>
@@ -15,7 +16,7 @@ IPAddress local_ip(192,168,0,1);                                                
 IPAddress gateway(192,168,0,2);                                                       //gateway
 IPAddress netmask(255,255,255,0);                                                     //netmask
 
-String hostname = "Senseo8266";                                                           //hostname
+String hostname = "Senseo";                                                           //hostname
 
 // Initialize async webserver
 AsyncWebServer server(80);                                                            //webserver on port 80
@@ -41,6 +42,8 @@ int twoCups_button = 13;                                                        
 SenseoState senseoState;                                                              //init the senseo state class
 
 String state = "off";                                                                 //state of senseo
+
+long starttime;                                                                       //starttime
 
 void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client,
  AwsEventType type, void *arg, uint8_t *data, size_t len);
@@ -236,26 +239,30 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
     }
 
     else{
-      JsonObject& jObject = DynamicJsonBuffer().parseObject(data);                //get json object
+      JsonObject& jObject = DynamicJsonBuffer().parseObject(data);                 //get json object
       
-      if(jObject.success()){                                                      //check json object success
+      if(jObject.success()){                                                       //check json object success
         if(jObject.containsKey("ssid") && jObject.containsKey("password")){
           Serial.println("get wifi data");
           Serial.println("ssid: " + String(jObject["ssid"].asString()));
           Serial.println("password: " + String(jObject["password"].asString()));
 
-          handleSettingsUpdate(configWifI, jObject);                             //write wifi settings file
+          //write file if ssid and pwd > 0
+          if(String(jObject["ssid"].asString()).length() > 0 && 
+          String(jObject["password"].asString()).length() > 0){
+            handleSettingsUpdate(configWifI, jObject);                             //write wifi settings file
           
-          delay(1000);
+            delay(1000);
           
-          system_restart();                                                      //restart system
+            system_restart();
+          }                                                                        //restart system
         }
 
         else if(jObject.containsKey("lang")){
-          lang = jObject["lang"].asString();                                     //set language
+          lang = jObject["lang"].asString();                                       //set language
           Serial.println("set languge: " + lang);
 
-          handleSettingsUpdate(configLang, jObject);                             //write wifi settings file         
+          handleSettingsUpdate(configLang, jObject);                               //write wifi settings file         
         }
       }
     }
@@ -267,14 +274,14 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
              void *arg, uint8_t *data, size_t len) {
   switch (type) {
     case WS_EVT_CONNECT:
-      Serial.printf("WebSocket client #%u connected from %s\n", client->id(),    //client has connected
+      Serial.printf("WebSocket client #%u connected from %s\n", client->id(),      //client has connected
       client->remoteIP().toString().c_str());
       break;
     case WS_EVT_DISCONNECT:
-      Serial.printf("WebSocket client #%u disconnected\n", client->id());        //client has disconnected
+      Serial.printf("WebSocket client #%u disconnected\n", client->id());          //client has disconnected
       break;
     case WS_EVT_DATA:
-      handleWebSocketMessage(arg, data, len);                                    //handle websocket msg
+      handleWebSocketMessage(arg, data, len);                                      //handle websocket msg
       break;
     case WS_EVT_PONG:
     case WS_EVT_ERROR:
@@ -284,82 +291,90 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
 
 //set language for website
 void setLanguage(){
-  File configFile = SPIFFS.open(configLang, "r");                               //open config file
+  File configFile = SPIFFS.open(configLang, "r");                                  //open config file
 
     if(configFile){
       size_t size = configFile.size();
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
       configFile.close();
+ 
+      JsonObject& jObject = DynamicJsonBuffer().parseObject(buf.get());            //get json object
 
-      JsonObject& jObject = DynamicJsonBuffer().parseObject(buf.get());        //get json object
-
-      if(jObject.success())                                                    //check json object
+      if(jObject.success())                                                        //check json object
       {
-        lang = jObject["lang"].asString();                                     //set lang
+        lang = jObject["lang"].asString();                                         //set lang
       }
     }
 }
 
-void setup() {
-  Serial.begin(115200);                                                       //init serial
+void setup() {  
+  Serial.begin(115200);                                                            //init serial
 
-  pinMode(led, OUTPUT);                                                       //init LED
+  starttime = millis();
 
-  pinMode(power_button, OUTPUT);                                              //init power button output
-  digitalWrite(power_button, HIGH);
+  pinMode(led, OUTPUT);                                                            //init LED
 
-  pinMode(oneCup_button, OUTPUT);                                             //init one cup button output
+  pinMode(power_button, OUTPUT);                                                   //init power button output
+  digitalWrite(power_button, HIGH);   
+
+  pinMode(oneCup_button, OUTPUT);                                                  //init one cup button output
   digitalWrite(oneCup_button, HIGH);
 
-  pinMode(twoCups_button, OUTPUT);                                            //init two cups button output
+  pinMode(twoCups_button, OUTPUT);                                                 //init two cups button output
   digitalWrite(twoCups_button, HIGH);
 
-  pinMode(state_input, INPUT_PULLUP);                                         //init power led input
+  pinMode(state_input, INPUT_PULLUP);                                              //init power led input
   
-  intiFileSystem();                                                           //init file system
+  intiFileSystem();                                                                //init file system
 
-  delay(1000);                                                                //wait
+  delay(1000);                                                                     //wait
+ 
+  wifiConnect();                                                                   //connect wifi
 
-  wifiConnect();                                                              //connect wifi
+  delay(1000);                                                                     //wait
 
-  delay(1000);                                                                //wait
-
-  setLanguage();                                                              //set language for websocket
+  setLanguage();                                                                   //set language for websocket
   
-  initWebSocket();                                                            //init websocket
+  initWebSocket();                                                                 //init websocket
 
-  startWebServer();                                                           //start webserver
+  startWebServer();                                                                //start webserver
 }
 
 void loop() {
-  state = senseoState.getSenseoState();                                       //get last state from senseo       
+  //close ap afer 15 minutes
+  if(WiFi.getMode() == WIFI_AP && millis() - starttime >= 15 * 60 * 1000){
+    WiFi.mode(WIFI_OFF);                                                           //turn wifi off
+    Serial.println("disconnect ap");     
+  }
 
-  String senseo_state = senseoState.getState(state_input);                    //check senseo state
+  state = senseoState.getSenseoState();                                            //get last state from senseo       
+
+  String senseo_state = senseoState.getState(state_input);                         //check senseo state
 
   //if senseo has a new state, send the state to all connected clients  
   if(!senseo_state.equals(state)){
-    senseoState.setSenseoState(senseo_state);                                 //set new state in senseo
-    notifyClients(senseo_state);                                              //send new state
+    senseoState.setSenseoState(senseo_state);                                      //set new state in senseo
+    notifyClients(senseo_state);                                                   //send new state
   }
 
   //it is impossible use delay in websocket threed!
 
   //hold power button for 300 ms
   if(!digitalRead(power_button)){
-    delay(300);                                                               //sleep 300 ms
-    digitalWrite(power_button, HIGH);                                         //release power button                                         
+    delay(300);                                                                    //sleep 300 ms
+    digitalWrite(power_button, HIGH);                                              //release power button                                         
   }
 
   //hold one cup button for 300 ms
   if(!digitalRead(oneCup_button)){
-    delay(300);                                                               //sleep 300 ms
-    digitalWrite(oneCup_button, HIGH);                                        //release one cup button 
+    delay(300);                                                                    //sleep 300 ms
+    digitalWrite(oneCup_button, HIGH);                                             //release one cup button 
   }
   
   //holdtwo cups button for 300 ms
   if(!digitalRead(twoCups_button)){
-    delay(300);                                                               //sleep 300 ms
-    digitalWrite(twoCups_button, HIGH);                                       //release two cups button 
+    delay(300);                                                                    //sleep 300 ms
+    digitalWrite(twoCups_button, HIGH);                                            //release two cups button 
   }
 }

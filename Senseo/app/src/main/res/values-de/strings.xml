@@ -7,6 +7,9 @@
     <string name="one_cup">eine tasse</string>
     <string name="two_cups">zwei tassen</string>
 
+    <string name="find_senseo">suche senseo</string>
+    <string name="exception_text">Senseo nicht im Netzwerk gefunden</string>
+    <string name="add_ip">ip einfügen</string>
     <string name="settings">einstellungen</string>
     <string name="address">IP Adresse</string>
     <string name="save">speichern</string>

@@ -20,6 +20,7 @@ import android.widget.Toast;
 
 import com.example.myfiles.MyFile;
 import com.example.senseo.MyObjects.Settings;
+import com.example.senseo.Settings.SettingsFragment;
 import com.example.websocketclient.Client;
 
 public class MainActivity extends AppCompatActivity implements Client.ClientListener {
@@ -130,7 +131,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
             client.sendMessage("power");
         }
 
-        //if client is not connect, show toast "nicht Verbunden"
+        //if client is not connect, show toast  "not connected"
         if(getTitle().toString().contains(getString(R.string.connected))){
             Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
@@ -144,7 +145,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
             client.sendMessage("one_cup");
         }
 
-        //if client is not connect, show toast "nicht Verbunden"
+        //if client is not connect, show toast "not connected"
         if(getTitle().toString().contains(getString(R.string.connected))){
             Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
@@ -158,7 +159,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
             client.sendMessage("two_cups");
         }
 
-        //if client is not connect, show toast "nicht Verbunden"
+        //if client is not connect, show toast "not connected"
         if(getTitle().toString().contains(getString(R.string.connected))){
             Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }

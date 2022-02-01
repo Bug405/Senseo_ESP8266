@@ -5,7 +5,7 @@
     android:background="@color/white"
     xmlns:tools="http://schemas.android.com/tools"
     android:id="@+id/fragm_settings"
-    tools:context=".SettingsFragment">
+    tools:context=".Settings.SettingsFragment">
 
     <ScrollView
         android:layout_width="match_parent"
@@ -37,18 +37,24 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content" />
 
+
+            <LinearLayout
+                android:id="@+id/layout_address"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"/>
+
+            <Button
+                android:id="@+id/btn_find_ip"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="@string/find_senseo"/>
+
             <Button
                 android:id="@+id/btn_save"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:text="@string/save"/>
-
-            <Button
-                android:id="@+id/btn_back"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:text="@string/back"/>
-
         </LinearLayout>
     </ScrollView>
 </LinearLayout>

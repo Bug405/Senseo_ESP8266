@@ -7,6 +7,9 @@
     <string name="one_cup">one cup</string>
     <string name="two_cups">two cups</string>
 
+    <string name="find_senseo">find senseo</string>
+    <string name="exception_text">can\'t find senseo in Network</string>
+    <string name="add_ip">add ip</string>
     <string name="settings">settings</string>
     <string name="address">ip address</string>
     <string name="save">save</string>

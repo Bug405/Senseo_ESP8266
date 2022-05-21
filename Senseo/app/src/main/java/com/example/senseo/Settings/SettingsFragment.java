@@ -17,6 +17,7 @@ import com.example.senseo.MyObjects.Settings;
 import com.example.senseo.R;
 
 import java.net.InetAddress;
+import java.util.Objects;
 
 public class SettingsFragment extends Fragment {
 
@@ -100,13 +101,14 @@ public class SettingsFragment extends Fragment {
                     InetAddress[] addresses = InetAddress.getAllByName("Senseo");
 
                     //add address to layout
-                    for(InetAddress address: addresses) {
-                        getActivity().runOnUiThread(()->{
-                            address_layout.addView(getIpView(address.getHostAddress()));
-                        });
+                    for (InetAddress address : addresses) {
+                        Objects.requireNonNull(getActivity()).runOnUiThread(() ->
+                                address_layout.addView(getIpView(address.getHostAddress())));
                     }
                 } catch (Exception e) {
-                    address_layout.addView(getExceptionText(getString(R.string.exception_text)));
+                    Objects.requireNonNull(getActivity()).runOnUiThread(() ->
+                            address_layout.addView(getExceptionText(getString(R.string.exception_text))));
+
                     e.printStackTrace();
                 }
             }

@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <title id=title>Senseo</title>
+  <link rel="icon" href="data:,">
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <script src="webSocket.js"></script>  
+</head>
+
+<body>
+  <h1></h1>
+  
+  <div>
+    <button id="add_button">timer hinzufügen</button>
+  </div>
+
+  <div id="timerlayout">
+
+    <div class="timer-group" id="timer1">
+      <select name="choseFunction" id="choseFunction">
+        <option value="1">einschalten</option>
+        <option value="2">täglich ein</option>
+        <option value="3">eine Tasse</option>
+        <option value="4">zwei tassen</option>
+      </select> 
+  
+      <input type="time" id="timepicker" required>
+  
+      <button id="active_button">active</button>
+  
+      <button id="remove_button">timer löschen</button>
+    </div>
+  
+    <div class="timer-group" id="timer2">
+      <select name="choseFunction" id="choseFunction">
+        <option value="1">einschalten</option>
+        <option value="2">täglich ein</option>
+        <option value="3">eine Tasse</option>
+        <option value="4">zwei tassen</option>
+      </select> 
+  
+      <input type="time" id="timepicker" required>
+  
+      <button id="active_button">active</button>
+  
+      <button id="remove_button">timer löschen</button>
+    </div>
+  
+    <div class="timer-group" id="timer3">
+      <select name="choseFunction" id="choseFunction">
+        <option value="1">einschalten</option>
+        <option value="2">täglich ein</option>
+        <option value="3">eine Tasse</option>
+        <option value="4">zwei tassen</option>
+      </select> 
+  
+      <input type="time" id="timepicker" required>
+  
+      <button id="active_button">active</button>
+  
+      <button id="remove_button">timer löschen</button>
+    </div>    
+  </div>
+
+  <div>
+    <button id="save_button">speichern</button>
+  </div>
+</body>
+
+<script>
+//#region Startcode
+window.addEventListener("load",  onload);
+
+function  onload(event) {
+    initWebSocket();      // init WebSocket
+    addWebSocketEvents(); // add Eventhandler
+    addHTMLEvents();      // add html Events
+}
+//#endregion
+
+
+//#region Events
+function addHTMLEvents() {
+    document.getElementById('add_button').addEventListener('click', addListener);
+    document.getElementById('save_button').addEventListener('click', saveListener);
+    
+    addTimer('timer1');
+    addTimer('timer2');
+    addTimer('timer3');
+}
+
+//init timers
+function addTimer(name){
+    var timer = document.getElementById(name);
+
+    var choseFunktion = timer.querySelector('#choseFunction');
+    var timepicker = timer.querySelector('#timepicker');
+    var activeButton = timer.querySelector('#active_button');
+    var removeButton = timer.querySelector('#remove_button');
+
+    choseFunktion.selectedIndex = 0;
+    timepicker.value = "";
+    activeButton.style.backgroundColor = "green";
+    activeButton.addEventListener('click', activeListener);
+    removeButton.addEventListener('click', removeListener);
+}
+
+//listener add timer
+function addListener(event) {
+    var layout = document.getElementById('timerlayout');
+    var child = layout.children;
+   
+    for(var i = 0; i < layout.childElementCount; i++){
+        if(child[i].style.display == 'none'){
+            child[i].style.display = 'block';
+            addTimer(child[i].id);
+            layout.appendChild(child[i]);
+            console.log("add timer");
+            break;
+        }
+    }   
+}
+
+//listener remove timer
+function removeListener(event) {
+    event.preventDefault();
+    var source = event.target || event.srcElement;
+    var parent = source.parentElement;
+
+    parent.style.display = 'none';
+    console.log("remove timer");
+}
+
+//listener active button
+function activeListener(event) {
+    event.preventDefault();
+    var button = event.target || event.srcElement;
+
+    if(button.style.backgroundColor != "green"){
+        button.style.backgroundColor = "green";
+    } else {
+        button.style.backgroundColor = "red";
+    }  
+}
+
+//listener send timer config to senseo
+function saveListener(event){
+    var json = getAsJson();
+    websocket.send(json);
+    console.log(json);
+ }
+
+function getAsJson(){
+    var layout = document.getElementById('timerlayout');
+    var child = layout.children;
+   
+    var timerJson1 = getTimerAsJson(child[0].id);
+    var timerJson2 = getTimerAsJson(child[1].id);
+    var timerJson3 = getTimerAsJson(child[2].id);
+
+    return JSON.stringify({
+        "null":"null",
+        "timerArray":[
+          timerJson1,
+          timerJson2,
+          timerJson3
+        ]
+    });
+}
+ 
+//get timer as jason
+function getTimerAsJson(name){
+    var timer = document.getElementById(name);    
+
+    var choseFunktion = timer.querySelector('#choseFunction');
+    var timepicker = timer.querySelector('#timepicker');
+    var activeButton = timer.querySelector('#active_button');
+
+    var visible = timer.style.display != 'none';
+    var active = activeButton.style.backgroundColor == "green";
+    var makeCoffeeWhenReady = choseFunktion.selectedIndex;
+    
+    var hour = 0;
+    var minute = 0;
+
+    if(timepicker.value != ""){
+        hour = timepicker.value.split(":")[0];
+        minute = timepicker.value.split(":")[1];
+    }
+
+    var json = {
+        "active":active,
+        "visible":visible,  
+        "makeCoffeeWhenReady":makeCoffeeWhenReady, 
+        "hour":hour, 
+        "minute":minute
+    }
+
+    return json;
+}
+
+//set timer from json
+function setFromJson(json, name){
+    var timer = document.getElementById(name);
+
+    var choseFunktion = timer.querySelector('#choseFunction');
+    var timepicker = timer.querySelector('#timepicker');
+    var activeButton = timer.querySelector('#active_button');
+
+    if(json.visible){
+        timer.style.display = 'block';        
+    } else{
+        timer.style.display = 'none';
+    }
+    
+    choseFunktion.selectedIndex = json.makeCoffeeWhenReady;
+
+    if(json.active){
+        activeButton.style.backgroundColor = "green";
+    } else{
+        activeButton.style.backgroundColor = "red";
+    }
+    
+    const hours = getTwoDigits(json.hour);
+    const mins = getTwoDigits(json.minute);
+
+    timepicker.value = hours + ":" + mins;
+}
+
+function getTwoDigits(num) {
+    return num.toString().padStart(2, '0');
+  }
+//#endregion
+
+//# WebSocket Events 
+function addWebSocketEvents() {
+    websocket.onopen    = onOpen;
+    websocket.onmessage = onMessage;
+}
+
+//get state
+function onOpen(event) {
+    websocket.send("getTimers");
+    console.log("send msg to server: getTimers");
+}
+  
+function onMessage(event) {    
+    console.log("get new msg from server: " + event.data);
+
+    if(event.data.includes("timerArray")){
+        var jsons = JSON.parse(event.data);
+       
+        if(jsons.timerArray != ""){
+          setFromJson(jsons.timerArray[0], 'timer1');
+          setFromJson(jsons.timerArray[1], 'timer2');
+          setFromJson(jsons.timerArray[2], 'timer3');
+        }
+   }
+}
+//#endregion
+</script>
+
+<style>
+  html {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+}
+
+title {
+    font-size: x-large;
+}
+
+Button {
+    position:relative;
+    border: none;
+    color: #0a0a8a;
+    background-color: #c2ccd6;
+    padding: 15px 32px; 
+    text-align: center; 
+    font-size: 16px;;
+    width: 20%; 
+    height: 8%;
+    border-radius: 4px; 
+    transition-duration: 0.4s;
+    text-decoration: none;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+Button:after {
+    content: "";
+    background: #3c3d3c;
+    display: block;
+    position: absolute;
+    padding-top: 300%;
+    padding-left: 350%;
+    margin-left: -20px!important;
+    margin-top: -120%;
+    opacity: 0;
+    transition: all 0.8s
+}
+
+Button:active:after {
+    padding: 0;
+    margin: 0;
+    opacity: 1;
+    transition: 0s
+}
+
+select {
+    position:relative;
+    border: none;
+    padding: 15px 32px; 
+    text-align: center; 
+    font-size: 16px;
+    width: 20%; 
+    height: 8%;
+    border-radius: 4px; 
+    transition-duration: 0.4s;
+    text-decoration: none;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+input {
+    position:relative;
+    border: none;
+    padding: 15px 32px; 
+    text-align: center; 
+    font-size: 16px;
+    width: 20%; 
+    height: 8%;
+    border-radius: 4px; 
+    transition-duration: 0.4s;
+    text-decoration: none;
+    overflow: hidden;
+    cursor: pointer;
+}
+</style>
+</html>
+

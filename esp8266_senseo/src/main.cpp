@@ -5,12 +5,18 @@
 #include <FS.h>
 #include <SPIFFSEditor.h>
 #include <ArduinoJson.h>
+#include <NTPClient.h>
+#include <WiFiUdp.h>
 #include "SenseoState.h"
+#include "ConfigFile.h"
+#include <SenseoTimer.h>
 
 
 //Initialize WiFi
 char *password = "SenseoESP8266";                                                     //AP password
-char *mySsid = "SENSEO_CONFIG";                                                       //AP ssid                               
+char *mySsid = "SENSEO_CONFIG";                                                       //AP ssid
+
+boolean restartWiFi;
 
 IPAddress local_ip(192,168,0,1);                                                      //local ip
 IPAddress gateway(192,168,0,2);                                                       //gateway
@@ -26,11 +32,18 @@ AsyncWebSocket socket("/ws");                                                   
 const char* user = "senseo";                                                          //webserver user
 const char* pwd = "senseo";                                                           //webserver password
 
+int timeOffset = 0;                                                                   //offset time client in hour
+
+WiFiUDP ntpUDP;
+
+NTPClient timeClient(ntpUDP, "3.de.pool.ntp.org", 0, 60000);
+
 String lang = "ger";                                                                  //language for website
 
 //config files
 String configWifI = "/configWifI.json";                                               //wifi config file name
-String configLang = "/configLang.json";                                               //language config file name
+String configLang = "/configFile.json";                                               //language config file name
+String configTimers = "/configTimers.json";                                           //language config file name
 
 int led = LED_BUILTIN;                                                                //led
 
@@ -40,6 +53,12 @@ int oneCup_button = 12;                                                         
 int twoCups_button = 13;                                                              //gpio 13 (D7) two cups button
 
 SenseoState senseoState;                                                              //init the senseo state class
+
+const int timerLength = 3;                                                            //length timer array
+
+SenseoTimer timers[timerLength];                                                      //init the timer array
+
+ConfigFile configFile;                                                                //init config file
 
 String state = "off";                                                                 //state of senseo
 
@@ -67,13 +86,13 @@ void wifiConnect(){
       std::unique_ptr<char[]> buf(new char[size]);
       configFile.readBytes(buf.get(), size);
       configFile.close();
+      
+      DynamicJsonDocument jsonDocument(1024);
+      DeserializationError error = deserializeJson(jsonDocument, buf.get());          //get json object
 
-      JsonObject& jObject = DynamicJsonBuffer().parseObject(buf.get());               //get json object
-
-      if(jObject.success())                                                           //check json object
-      {
-        ssid = jObject["ssid"];                                                       //set ssid
-        password = jObject["password"];                                               //set password
+      if(!error){                                                                     //check json object
+        ssid = jsonDocument["ssid"];                                                  //set ssid
+        password = jsonDocument["password"];                                          //set password
 
         WiFi.mode(WIFI_STA);                                                          //set wifi sta mode
         WiFi.begin(ssid, password);                                                   //start wifi connection
@@ -108,6 +127,30 @@ void wifiConnect(){
 
   Serial.println("");
   WiFi.printDiag(Serial);                                                             //print connection state
+  Serial.print("ip ");
+  Serial.println(WiFi.localIP());
+}
+
+//reconnect wifi after get new settings
+void wifiReconnect(boolean reconnect){
+  if(reconnect){
+    if(WiFi.isConnected()){
+      WiFi.disconnect();                                                              //if wifi is connected disconnect wifi 
+    }
+
+    restartWiFi = false;
+
+    delay(1000);
+
+    wifiConnect();                                                                    //connect wifi
+  }
+}
+
+//init ota updates
+void initOTA(){
+  ArduinoOTA.setHostname("Senseo");                                                   //set ota hsotname
+  ArduinoOTA.setPassword("senseo");                                                   //set ota password
+  ArduinoOTA.begin();                                                                 //begin ota
 }
 
 //int filesystem
@@ -124,13 +167,91 @@ void initWebSocket() {
   Serial.println("WebSocket ready");
 }
 
-//write json to settings file
-void handleSettingsUpdate(String configFile, JsonObject& var)
-{ 
-  File file = SPIFFS.open(configFile, "w");                                           //load file
+//init timeClient
+void initTimeClient() {
+  timeClient = NTPClient(ntpUDP, "3.de.pool.ntp.org", timeOffset * 3600, 60000);
+  timeClient.begin();                                                                //begin timeclient
+  timeClient.update();                                                               //update time
 
-  var.printTo(file);                                                                  //print json object to file          
-  file.close();                                                                       //close file
+  Serial.print("Current time: ");
+  Serial.println(timeClient.getFormattedTime());
+} 
+
+//set language for website
+void loadConfig(){
+  DynamicJsonDocument jsonDocument = configFile.loadJsonFile(configLang);           //load config
+  lang = jsonDocument["lang"].as<String>();
+  timeOffset = jsonDocument["offset"].as<int>();
+}
+
+void saveConfig(String lang, int offset){                                           //save config gile
+  DynamicJsonDocument document(1024);
+  document["lang"] = lang;
+  document["offset"] = offset;
+
+  configFile.saveJsonFile(configLang, document);
+}
+
+//get timer as json
+DynamicJsonDocument getTimerAsJson(){
+  DynamicJsonDocument document(1024);
+  JsonArray array = document.createNestedArray("timerArray");                       //build json array
+
+  for(int i = 0; i < timerLength; i++){
+    DynamicJsonDocument timer = timers[i].getTimerAsJson();                         //get timer as json
+    array.add(timer);                                                               //add timer
+  }
+
+  return document;
+}
+
+//set timer 
+boolean setTimers(DynamicJsonDocument jsonDocument){
+  boolean success = true;
+
+  JsonArray array = jsonDocument["timerArray"];                                    //get json array
+
+  //reset timers
+  for (int i = 0; i < timerLength; i++){
+    timers[i].setActive(false);
+    timers[i].setVisible(false);
+  }
+
+  for (size_t i = 0; i < array.size() && i < timerLength; i++){
+    success = timers[i].setTimerFromJson(array.getElement(i).as<String>());        //set timer from json
+
+    if(!success){
+      break;
+    }
+  }
+
+  return success;
+}
+
+//get state as json
+DynamicJsonDocument getState(){
+  DynamicJsonDocument document(1024);
+  document["hour"] = timeClient.getHours();
+  document["minute"] = timeClient.getMinutes();
+  document["timeIsSet"] = timeClient.isTimeSet();
+  document["lang"] = lang;
+  document["state"] = state;
+
+  return document;
+}
+
+//init timers
+void initTimer(){
+  DynamicJsonDocument jsonDocument = configFile.loadJsonFile(configTimers);         //load timer configfile
+
+  for(int i = 0; i < timerLength; i++){
+    timers[i] = SenseoTimer(&timeClient);                                           //init timers
+  }
+
+  if(jsonDocument.containsKey("timerArray")){
+    setTimers(jsonDocument);                                                        //set timers
+    Serial.println("init timers");
+  }
 }
 
 /*
@@ -157,34 +278,23 @@ void startWebServer() {
     request->send(SPIFFS, "/settings.html", "text/html");                            //send file from SPIFFS to client
   });
 
-  //send style_settings.css to webclient
-  server.on("/style_settings.css", HTTP_GET, [](AsyncWebServerRequest *request){    
-    request->send(SPIFFS, "/style_settings.css", "text/css");                       //send file from SPIFFS to client
+  //send timer.html to webclient
+  server.on("/timer", HTTP_GET, [](AsyncWebServerRequest *request){  
+    if(!request->authenticate(user, pwd)){
+      return request->requestAuthentication();                                       //check authentification
+    }
+
+    request->send(SPIFFS, "/timer.html", "text/html");                               //send file from SPIFFS to client
+  });
+
+    //send webSocket.js to webclient
+  server.on("/webSocket.js", HTTP_GET, [](AsyncWebServerRequest *request){    
+    request->send(SPIFFS, "/webSocket.js", "text/html");                            //send file from SPIFFS to client
   });
 
   //send senseo.jpg to webclient
   server.on("/senseo.jpg", HTTP_GET, [](AsyncWebServerRequest *request){    
     request->send(SPIFFS, "/senseo.jpg", "text/css");                               //send file from SPIFFS to client
-  });
-
-  //send style.css to webclient
-  server.on("/style.css", HTTP_GET, [](AsyncWebServerRequest *request){    
-    request->send(SPIFFS, "/style.css", "text/css");                                //send file from SPIFFS to client
-  });
-
-  //send script.js to webclient
-  server.on("/script.js", HTTP_GET, [](AsyncWebServerRequest *request){ 
-    request->send(SPIFFS, "/script.js", "text/html");                               //send file from SPIFFS to client
-  });
-
-  //send settings.js to webclient
-  server.on("/settings.js", HTTP_GET, [](AsyncWebServerRequest *request){ 
-    request->send(SPIFFS, "/settings.js", "text/html");                             //send file from SPIFFS to client
-  });
-
-  //send webSocket.js to webclient
-  server.on("/webSocket.js", HTTP_GET, [](AsyncWebServerRequest *request){    
-    request->send(SPIFFS, "/webSocket.js", "text/html");                            //send file from SPIFFS to client
   });
 
   // Start server 
@@ -195,11 +305,14 @@ void startWebServer() {
 
 //notify all clients
 void notifyClients(String state) {
-  socket.textAll(state);
+  DynamicJsonDocument document(1024);
+  document["state"] = state;
+
+  socket.textAll(document.as<String>());
 }
 
 //handle web socket msg
-void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
+void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, AsyncWebSocketClient *client) {
   AwsFrameInfo *info = (AwsFrameInfo*)arg;
 
   if (info->final && info->index == 0 && info->len == len && info->opcode == WS_TEXT) {
@@ -207,62 +320,105 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len) {
    
     //send state
     if (strcmp((char*)data, "INFO") == 0) {  
-       notifyClients(state);                                                       //notify clients state
-
-       if(!lang.equals("ger")){
-         notifyClients("eng");                                                     //notify clients languge
-       }  
+       socket.text(client->id(), getState().as<String>());       
     }
 
-    //if msg is "power" press power button
-    //for 300 ms
-    else if (strcmp((char*)data, "power") == 0) {  
-      Serial.println("press power button");
-
-      digitalWrite(power_button, LOW);                                             //press power button
+    //send timers
+    if (strcmp((char*)data, "getTimers") == 0) {  
+       socket.text(client->id(), getTimerAsJson().as<String>());                   //send timer as json string to client
     }
 
-    //if msg is "one_cup" press one cup button
-    //for 300 ms
-    else if (strcmp((char*)data, "one_cup") == 0) {  
-      Serial.println("press one cup button");
-
-      digitalWrite(oneCup_button, LOW);                                            //press one cup button 
-    }
-
-    //if msg is "two_cups" press two cups button
-    //for 300 ms
-    else if (strcmp((char*)data, "two_cups") == 0) {  
-      Serial.println("press two cups button");   
-
-      digitalWrite(twoCups_button, LOW);                                           //press two cups button
-    }
-
-    else{
-      JsonObject& jObject = DynamicJsonBuffer().parseObject(data);                 //get json object
+    else{  
+      DynamicJsonDocument jsonDocument(1024);
+      DeserializationError error = deserializeJson(jsonDocument, data);            //get json object
       
-      if(jObject.success()){                                                       //check json object success
-        if(jObject.containsKey("ssid") && jObject.containsKey("password")){
-          Serial.println("get wifi data");
-          Serial.println("ssid: " + String(jObject["ssid"].asString()));
-          Serial.println("password: " + String(jObject["password"].asString()));
-
-          //write file if ssid and pwd > 0
-          if(String(jObject["ssid"].asString()).length() > 0 && 
-          String(jObject["password"].asString()).length() > 0){
-            handleSettingsUpdate(configWifI, jObject);                             //write wifi settings file
+      //check json object success
+      if(!error){
+        if(jsonDocument.containsKey("get")){
+          String msg = jsonDocument["get"].as<String>();
           
-            delay(1000);
-          
-            system_restart();
-          }                                                                        //restart system
+          //send state
+          if (msg.equals("INFO")) {  
+            socket.text(client->id(), getState().as<String>()); 
+          }      
+        
+          //send timers
+          if (msg.equals("getTimers")) {  
+            socket.text(client->id(), getTimerAsJson().as<String>());              //send timer as json string to client
+          }
         }
 
-        else if(jObject.containsKey("lang")){
-          lang = jObject["lang"].asString();                                       //set language
-          Serial.println("set languge: " + lang);
+        else if(jsonDocument.containsKey("press_button")){
+          String press_button = jsonDocument["press_button"].as<String>();
 
-          handleSettingsUpdate(configLang, jObject);                               //write wifi settings file         
+          //if msg is "power" press power button
+          //for 300 ms
+          if (press_button.equals("power")) { 
+            digitalWrite(power_button, LOW);                                       //press power button
+          }
+
+          //if msg is "one_cup" press one cup button
+          //for 300 ms
+          else if (press_button.equals("one_cup")) {  
+            digitalWrite(oneCup_button, LOW);                                       //press one cup button 
+          }
+
+          //if msg is "two_cups" press two cups button
+          //for 300 ms
+          else if (press_button.equals("two_cups")) {  
+            digitalWrite(twoCups_button, LOW);                                       //press two cups button
+          }
+        }
+                                                                
+        else if(jsonDocument.containsKey("ssid") && jsonDocument.containsKey("password")){
+          Serial.println("get wifi data");
+          Serial.println("ssid: " + String(jsonDocument["ssid"].as<String>()));
+          Serial.println("password: " + String(jsonDocument["password"].as<String>()));
+
+          //write file if ssid and pwd > 0
+          if(String(jsonDocument["ssid"].as<String>()).length() > 0 && 
+          String(jsonDocument["password"].as<String>()).length() > 0){
+            configFile.saveJsonFile(configWifI, jsonDocument);                      //write wifi settings file
+          
+            restartWiFi = true;
+          }                                                                         //reconnect wifi
+        }
+
+        else if(jsonDocument.containsKey("lang")){
+          lang = jsonDocument["lang"].as<String>();                                 //set language          
+
+          saveConfig(lang, timeOffset);                                             //write config file 
+          Serial.println("set language: " + lang);       
+        }
+
+        else if(jsonDocument.containsKey("offset")){
+          int offset = jsonDocument["offset"].as<int>();                            //set time offset
+
+          if(timeClient.isTimeSet()){
+            timeOffset = (timeOffset + offset) - timeClient.getHours();             //get new offset
+
+            initTimeClient();                                                       //init timeClient
+            
+            Serial.println("set time offset: " + String(timeOffset));
+
+            saveConfig(lang, timeOffset);                                           //write config file            
+          }       
+        }
+
+        else if(jsonDocument.containsKey("timerArray")){         
+          boolean success = setTimers(jsonDocument);
+
+          if(success){
+            configFile.saveJsonFile(configTimers, jsonDocument);                    //write timers config file
+                       
+            Serial.println("write timer file success");
+
+            DynamicJsonDocument document(1024);
+            document["timerUpdateSuccess"] = success;
+            socket.text(client->id(), document.as<String>());                        //send client timer update succes
+          } else {
+            Serial.println("write timer update fail");
+          }
         }
       }
     }
@@ -281,31 +437,12 @@ void onEvent(AsyncWebSocket *server, AsyncWebSocketClient *client, AwsEventType 
       Serial.printf("WebSocket client #%u disconnected\n", client->id());          //client has disconnected
       break;
     case WS_EVT_DATA:
-      handleWebSocketMessage(arg, data, len);                                      //handle websocket msg
+      handleWebSocketMessage(arg, data, len, client);                              //handle websocket msg
       break;
     case WS_EVT_PONG:
     case WS_EVT_ERROR:
       break;
   }
-}
-
-//set language for website
-void setLanguage(){
-  File configFile = SPIFFS.open(configLang, "r");                                  //open config file
-
-    if(configFile){
-      size_t size = configFile.size();
-      std::unique_ptr<char[]> buf(new char[size]);
-      configFile.readBytes(buf.get(), size);
-      configFile.close();
- 
-      JsonObject& jObject = DynamicJsonBuffer().parseObject(buf.get());            //get json object
-
-      if(jObject.success())                                                        //check json object
-      {
-        lang = jObject["lang"].asString();                                         //set lang
-      }
-    }
 }
 
 void setup() {  
@@ -323,7 +460,7 @@ void setup() {
 
   pinMode(twoCups_button, OUTPUT);                                                 //init two cups button output
   digitalWrite(twoCups_button, HIGH);
-
+                             
   pinMode(state_input, INPUT_PULLUP);                                              //init power led input
   
   intiFileSystem();                                                                //init file system
@@ -334,19 +471,33 @@ void setup() {
 
   delay(1000);                                                                     //wait
 
-  setLanguage();                                                                   //set language for websocket
+  loadConfig();                                                                    //set language for websocket
+
+  initTimeClient();                                                                //init time client
+
+  delay(1000);
+
+  initTimer();
   
   initWebSocket();                                                                 //init websocket
 
   startWebServer();                                                                //start webserver
+
+  initOTA();                                                                       //init ota
 }
 
-void loop() {
+void loop() { 
   //close ap afer 15 minutes
   if(WiFi.getMode() == WIFI_AP && millis() - starttime >= 15 * 60 * 1000){
     WiFi.mode(WIFI_OFF);                                                           //turn wifi off
     Serial.println("disconnect ap");     
   }
+
+  wifiReconnect(restartWiFi);                                                      //restart wifi if new settings arrive
+
+  ArduinoOTA.handle();                                                             //handle ota update
+
+  timeClient.update();                                                             //update timeclient
 
   state = senseoState.getSenseoState();                                            //get last state from senseo       
 
@@ -358,23 +509,46 @@ void loop() {
     notifyClients(senseo_state);                                                   //send new state
   }
 
-  //it is impossible use delay in websocket threed!
-
   //hold power button for 300 ms
   if(!digitalRead(power_button)){
+    Serial.println("press power button");
+
     delay(300);                                                                    //sleep 300 ms
     digitalWrite(power_button, HIGH);                                              //release power button                                         
   }
 
   //hold one cup button for 300 ms
   if(!digitalRead(oneCup_button)){
+    Serial.println("press one cup button");
+
     delay(300);                                                                    //sleep 300 ms
     digitalWrite(oneCup_button, HIGH);                                             //release one cup button 
   }
   
   //holdtwo cups button for 300 ms
   if(!digitalRead(twoCups_button)){
+    Serial.println("press two cups button");
+
     delay(300);                                                                    //sleep 300 ms
     digitalWrite(twoCups_button, HIGH);                                            //release two cups button 
+  }
+
+  //timer
+  if(timeClient.isTimeSet()){   
+    for(int i = 0; i < timerLength; i++){
+      if(timers[i].isActive()){
+        if(timers[i].pressPowerOn(senseo_state)){
+          digitalWrite(power_button, LOW);                                         //timer press power button 
+        }
+
+        if(timers[i].pressOneCupButton(senseo_state)){
+          digitalWrite(oneCup_button, LOW);                                        //timer press onr cup button 
+        }
+
+        if(timers[i].pressTwoCupsButton(senseo_state)){
+          digitalWrite(twoCups_button, LOW);                                       //timer press two cups button 
+        }
+      }
+    }
   }
 }

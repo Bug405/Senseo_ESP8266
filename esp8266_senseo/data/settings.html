@@ -5,9 +5,7 @@
   <title id=title>Senseo - Settings</title>
   <link rel="icon" href="data:,">
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <link rel="stylesheet" type="text/css" href="style_settings.css">
   <script src="webSocket.js"></script>  
-  <script src="settings.js"></script>  
 </head>
 
 <body>
@@ -40,5 +38,182 @@
   <div id="settings">
     <button id="save_button">save</button>
   </div>
+
+  <h1>Time</h1>
+
+  <div id="settings">
+    <label for="time">time(only hour required)</label>
+    <input type="time" id="timepicker" required>  
+  </div>
+  
+  <div id="settings">
+    <button id="save_time_button">save</button>
+  </div>
 </body>
+
+<script>
+  //#region Startcode
+window.addEventListener("load",  onload);
+
+function  onload(event) {
+    initWebSocket();      // init WebSocket
+    addWebSocketEvents(); // add Eventhandler
+    addHTMLEvents();      // add html Events
+}
+//#endregion
+
+//#region Events
+function addHTMLEvents() {
+    document.getElementById('language_button').addEventListener('click', langListener);
+    document.getElementById('save_button').addEventListener('click', wifiListener);
+    document.getElementById('save_time_button').addEventListener('click', offsetListener);
+}
+ 
+//send language settings to server
+function langListener(event) {
+    var lang;
+
+    if (document.getElementById("language_button").innerText == "set english") {
+      lang = "eng";
+      document.getElementById("language_button").innerText = "set german";
+    } else {
+      lang = "ger";
+      document.getElementById("language_button").innerText = "set english";
+    }
+
+    var data = { lang: lang };
+
+    websocket.send(JSON.stringify(data));
+    console.log("send msg to server: language settings " + JSON.stringify(data));
+}
+
+//send wifi settings to server
+function wifiListener(event) {
+    var ssid = document.getElementById("ssid").value;
+    var password = document.getElementById("password").value;
+    var data = { ssid: ssid, password: password };
+    
+    websocket.send(JSON.stringify(data));
+    console.log("send msg to server: wifi settings" + JSON.stringify(data));
+}
+
+//send wifi settings to server
+function offsetListener(event) {
+    var hour = 0;
+
+    if(timepicker.value != ""){
+        hour = timepicker.value.split(":")[0];
+
+        var data = { offset: hour };
+    
+        websocket.send(JSON.stringify(data));
+        console.log("send msg to server: time offset" + JSON.stringify(data));
+    }    
+}
+//#endregion
+
+//# WebSocket Events 
+function addWebSocketEvents() {
+    websocket.onopen    = onOpen;
+    websocket.onmessage = onMessage;
+}
+
+function onOpen(event) {
+    //get state
+    websocket.send("INFO");
+
+    console.log("send msg to server: INFO");
+}
+  
+function onMessage(event) {
+
+    console.log("get new msg from server: " + event.data);
+
+    if(event.data.includes("lang")){
+        var json = JSON.parse(event.data);
+
+        if(json.lang == "eng"){
+          document.getElementById('language_button').innerText = "set german";
+        }
+    }
+
+    if(event.data.includes("hour")){
+        var json = JSON.parse(event.data);
+      
+        var timepicker = document.getElementById("timepicker");
+        
+        const hours = getTwoDigits(json.hour);
+        const mins = getTwoDigits(json.minute);
+
+        timepicker.value = hours + ":" + mins;
+
+        if(json.timeIsSet == false){
+          document.getElementById('save_time_button').innerText = "time not set";
+          document.getElementById('save_time_button').style.backgroundColor = "red";
+        }  
+    }
+}
+
+function getTwoDigits(num) {
+    return num.toString().padStart(2, '0');
+  }
+//#endregion
+</script>
+
+<style>
+html {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+}
+
+title {
+    font-size: x-large;
+}
+
+Button {
+    border: none;
+    margin-left: 80%;
+    top: 50px;
+    right: 100px;
+    color: #0a0a8a;
+    background-color: #c2ccd6;
+    padding: 15px 32px; 
+    text-align: center; 
+    font-size: 16px;
+    width: 200px; 
+    border-radius: 4px; 
+    transition-duration: 0.4s;
+    cursor: pointer;
+}
+
+#language_button {
+    border: none;
+    margin-left: 0%;   
+    top: 50px;
+}
+
+#save_button {
+    border: none;
+    margin-left: 0%;   
+    top: 50px;
+}
+
+#save_time_button {
+  border: none;
+  margin-left: 0%;   
+  top: 50px;
+}
+
+#settings{
+    font-size: xx-large;
+    text-align: left;
+    top: 50px;
+    left: 20px;
+}
+
+input{
+    width: 200px;
+    height: 30px;
+}
+</style>
 </html>

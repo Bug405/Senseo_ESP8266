@@ -7,6 +7,7 @@ import android.content.Context;
 import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Display;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -20,12 +21,18 @@ import android.widget.Toast;
 
 import com.example.myfiles.MyFile;
 import com.example.senseo.MyObjects.Settings;
+import com.example.senseo.SenseoTimer.SenseoTimerFragment;
 import com.example.senseo.Settings.SettingsFragment;
 import com.example.websocketclient.Client;
 
-public class MainActivity extends AppCompatActivity implements Client.ClientListener {
+import org.json.JSONException;
+import org.json.JSONObject;
+
+public class MainActivity extends AppCompatActivity implements Client.ClientListener, SettingsFragment.onSendSettings, SenseoTimerFragment.onSendTimerToSenseo {
 
     private SettingsFragment settingsFragment;
+
+    private SenseoTimerFragment timerFragment;
 
     private String title;
 
@@ -36,24 +43,20 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     private String port = "80";
 
     @Override
-    protected void onCreate(Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
         title = getTitle().toString();
 
-        //initialize settings fragment
-        settingsFragment = new SettingsFragment();
-
-        //settings Listener
-        settingsFragment.setSendSettings(onSendSettings);
-
         //load settings
-        Object object = new MyFile().loadFile(getApplicationContext(), "Settings.txt", true);
+        MyFile file = new MyFile();
+        file.setShowToast(false);
+        Object object = file.loadFile(getApplicationContext(), "Settings.txt");
+
 
         if(object instanceof Settings) {
             settings = (Settings) object;
-            settingsFragment.setSettings(settings);
         } else {
             settings = new Settings();
         }
@@ -93,8 +96,16 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         if (item.getItemId() == R.id.ItemSettings) {
+            settingsFragment = new SettingsFragment();
+            settingsFragment.setSettings(settings);
             openFragment(settingsFragment);
         }
+
+        if (item.getItemId() == R.id.ItemTimer) {
+            timerFragment = new SenseoTimerFragment();
+            openFragment(timerFragment);
+        }
+
         return true;
     }
 
@@ -112,7 +123,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     }
 
     //restart client after get new ip from settings
-    private SettingsFragment.onSendSettings onSendSettings = settings -> {
+    @Override
+    public void onSendSettings(Settings settings){
         this.settings = settings;
 
         client.close();
@@ -123,12 +135,31 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         client.connect();
     };
 
+    @Override
+    public void onSendTimers(String msg) {
+        //send msg to server
+        if(client != null){
+            client.sendMessage(msg);
+        }
+
+        //if client is not connect, show toast  "not connected"
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
+        }
+    }
+
     //set senseo on / off
-    private View.OnClickListener powerListener = e-> {
+    private View.OnClickListener powerListener = e->{
+        JSONObject object = new JSONObject();
 
         //send msg to server
         if(client != null){
-            client.sendMessage("power");
+            try {
+                object.put("press_button", "power");
+                client.sendMessage(object.toString());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
         }
 
         //if client is not connect, show toast  "not connected"
@@ -139,10 +170,16 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
     //make one cup of coffee
     private View.OnClickListener oneCupListener = e-> {
+        JSONObject object = new JSONObject();
 
         //send msg to server
         if(client != null){
-            client.sendMessage("one_cup");
+            try {
+                object.put("press_button", "one_cup");
+                client.sendMessage(object.toString());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
         }
 
         //if client is not connect, show toast "not connected"
@@ -153,10 +190,16 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
     //make two cups of coffee
     private View.OnClickListener twoCupsListener = e-> {
+        JSONObject object = new JSONObject();
 
         //send msg to server
         if(client != null){
-            client.sendMessage("two_cups");
+            try {
+                object.put("press_button", "two_cups");
+                client.sendMessage(object.toString());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
         }
 
         //if client is not connect, show toast "not connected"
@@ -167,24 +210,46 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
     @Override
     public String onClientGetMessage(String message) {
-        //state ready
-        if(message.equals("ready")){
-            setPowerButton(Color.GREEN);
-        }
+        try {
+            JSONObject object = new JSONObject(message);
 
-        //state off
-        else if(message.equals("off")){
-            setPowerButton(Color.LTGRAY);
-        }
+            if(object.has("state")){
+                String state = object.getString("state");
 
-        //state heating or make coffee
-        else if(message.equals("busy")){
-            setPowerButton(Color.YELLOW);
-        }
+                //state ready
+                if(state.equals("ready")){
+                    setPowerButton(Color.GREEN);
+                }
 
-        //state failure (no water)
-        else if(message.equals("failure")){
-            setPowerButton(Color.RED);
+                //state off
+                else if(state.equals("off")){
+                    setPowerButton(Color.LTGRAY);
+                }
+
+                //state heating or make coffee
+                else if(state.equals("busy")){
+                    setPowerButton(Color.YELLOW);
+                }
+
+                //state failure (no water)
+                else if(state.equals("failure")){
+                    setPowerButton(Color.RED);
+                }
+            }
+
+            else if(timerFragment != null){
+                //toast if timer update success
+                if(object.has("timerUpdateSuccess")){
+                    runOnUiThread(()->Toast.makeText(getApplicationContext(), getString(R.string.timer_success), Toast.LENGTH_LONG).show());
+                }
+
+                //add timers to layout
+                else if(object.has("timerArray")){
+                    runOnUiThread(()->timerFragment.addTimers(message));
+                }
+            }
+        } catch (JSONException e) {
+            e.printStackTrace();
         }
 
         return new String();
@@ -252,8 +317,18 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
     //else close app
     @Override
     public void onBackPressed() {
-        if(settingsFragment.isFragmentActive()){
-           settingsFragment.closeFragment();
+        //if(settingsFragment.isFragmentActive()){
+        //   settingsFragment.closeFragment();
+        if(settingsFragment != null || timerFragment != null) {
+            if (settingsFragment != null) {
+                settingsFragment.closeFragment();
+                settingsFragment = null;
+            }
+
+            if (timerFragment != null) {
+                timerFragment.closeFragment();
+                timerFragment = null;
+            }
         } else {
             finish();
         }

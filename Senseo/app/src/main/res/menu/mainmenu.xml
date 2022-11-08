@@ -3,4 +3,8 @@
     <item
         android:id="@+id/ItemSettings"
         android:title="@string/settings"/>
+
+    <item
+        android:id="@+id/ItemTimer"
+        android:title="@string/timer"/>
 </menu>

@@ -1,5 +1,6 @@
 package com.example.senseo.Settings;
 
+import android.app.Activity;
 import android.os.Bundle;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -29,8 +30,13 @@ public class SettingsFragment extends Fragment {
         void onSendSettings(Settings settings);
     }
 
-    public void setSendSettings(onSendSettings sendSettings){
-        this.sendSettings = sendSettings;
+    public void onAttach(Activity activity){
+        super.onAttach(activity);
+        try{
+            sendSettings = (onSendSettings) activity;
+        }catch (ClassCastException e){
+            throw new ClassCastException(activity.toString() + " must implement onSendSettings");
+        }
     }
 
     private EditText et_ip;
@@ -73,7 +79,7 @@ public class SettingsFragment extends Fragment {
         }
 
         //save settings file
-        new MyFile().saveFile(getContext(),"Settings.txt", settings, true);
+        new MyFile().saveFile(getContext(),"Settings.txt", settings);
     };
 
     //get senseo ip address

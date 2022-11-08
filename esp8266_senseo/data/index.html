@@ -5,13 +5,17 @@
   <title id=title>Senseo</title>
   <link rel="icon" href="data:,">
   <meta http-equiv="content-type" content="text/html; charset=utf-8">
-  <link rel="stylesheet" type="text/css" href="style.css">
   <script src="webSocket.js"></script>  
-  <script src="script.js"></script>  
 </head>
 
 <body>
   <h1></h1>
+  
+  <div class="button-group">
+    <a href="/timer">
+      <button id="timer_button">TIMER</button>
+    </a>
+  </div>
 
   <img id="backImg" src="senseo.jpg">
   
@@ -22,5 +26,154 @@
   </div>
 </body>
 
+<script>
+//#region Startcode
+window.addEventListener("load",  onload);
+
+function  onload(event) {
+    initWebSocket();      // init WebSocket
+    addWebSocketEvents(); // add Eventhandler
+    addHTMLEvents();      // add html Events
+}
+//#endregion
+
+//#region Events
+function addHTMLEvents() {
+    document.getElementById('power_button').addEventListener('click', powerListener);
+    document.getElementById('one_cup_button').addEventListener('click', oneCupListener);
+    document.getElementById('two_cups_button').addEventListener('click', twoCupsListener);
+}
+ 
+//set senseo on / off
+function powerListener(event) {
+    websocket.send(JSON.stringify({"press_button":"power"}));
+    console.log("send msg to server: power");
+}
+
+//make one cup of coffee
+function oneCupListener(event) {
+    websocket.send(JSON.stringify({"press_button":"one_cup"}));
+    console.log("send msg to server: one_cup");
+}
+
+//make two cups of coffee
+function twoCupsListener(event) {
+    websocket.send(JSON.stringify({"press_button":"two_cups"}));
+    console.log("send msg to server: two_cups");
+}
+//#endregion
+
+//# WebSocket Events 
+function addWebSocketEvents() {
+    websocket.onopen    = onOpen;
+    websocket.onmessage = onMessage;
+}
+
+function onOpen(event) {
+    //get state
+    websocket.send("INFO");
+    console.log("send msg to server: INFO");
+}
+  
+function onMessage(event) {
+    
+    console.log("get new msg from server: " + event.data);
+
+    if(event.data.includes("state")){
+        var json = JSON.parse(event.data);
+       
+        //state ready
+        if(json.state == "ready"){
+          document.getElementById('power_button').style.backgroundColor = "green";
+        }
+
+        //state off
+        else if(json.state == "off"){
+          document.getElementById('power_button').style.backgroundColor = "#c2ccd6"; //color initial
+        }
+
+        //state heating or make coffee
+        else if(json.state == "busy"){
+          document.getElementById('power_button').style.backgroundColor = "yellow";
+        }
+
+        //state failure (no water)
+        else if(json.state == "failure"){
+          document.getElementById('power_button').style.backgroundColor = "red";
+        }
+        
+        if(event.data.includes("lang")){
+            if(json.lang == "eng"){
+              document.getElementById('one_cup_button').innerText = "ONE CUP";
+              document.getElementById('two_cups_button').innerText = "TWO CUPS";
+            }
+        }
+    }
+}
+//#endregion
+
+
+</script>
+
+<style>
+html {
+    font-family: Arial, Helvetica, sans-serif;
+    text-align: center;
+}
+
+#backImg {
+    background-repeat: no-repeat;
+	background-position: 50% top;
+    background-size: auto 100%; 
+    height: 80vh;
+}
+
+title {
+    font-size: x-large;
+}
+
+#button-group {
+    float: left;
+    padding: 20px;
+    background: #eee;    
+}
+
+Button {
+    position:relative;
+    border: none;
+    color: #0a0a8a;
+    background-color: #c2ccd6;
+    padding: 15px 32px; 
+    text-align: center; 
+    font-size: 16px;
+    width: 33%; 
+    height: 8%;
+    border-radius: 4px; 
+    transition-duration: 0.4s;
+    text-decoration: none;
+    overflow: hidden;
+    cursor: pointer;
+}
+
+Button:after {
+    content: "";
+    background: #3c3d3c;
+    display: block;
+    position: absolute;
+    padding-top: 300%;
+    padding-left: 350%;
+    margin-left: -20px!important;
+    margin-top: -120%;
+    opacity: 0;
+    transition: all 0.8s
+}
+
+Button:active:after {
+    padding: 0;
+    margin: 0;
+    opacity: 1;
+    transition: 0s
+}
+</style>
 </html>
 

@@ -4,14 +4,26 @@
     <string name="connected">nicht Verbunden</string>
 
     <string name="power">power</string>
-    <string name="one_cup">eine tasse</string>
-    <string name="two_cups">zwei tassen</string>
+    <string name="one_cup">eine Tasse</string>
+    <string name="two_cups">zwei Tassen</string>
 
-    <string name="find_senseo">suche senseo</string>
+    <string name="find_senseo">suche Senseo</string>
     <string name="exception_text">Senseo nicht im Netzwerk gefunden</string>
-    <string name="add_ip">ip einfügen</string>
-    <string name="settings">einstellungen</string>
+    <string name="add_ip">IP einfügen</string>
+    <string name="settings">Einstellungen</string>
     <string name="address">IP Adresse</string>
+
+    <string name="timer">Timer</string>
+    <string name="add_timer">Timer hinzufügen</string>
+    <string name="timer_activated">aktiviert</string>
+    <string name="timer_deactivated">deaktiviert</string>
+    <string name="timer_powerOn">einschalten</string>
+    <string name="timer_daily">täglich ein</string>
+    <string name="timer_one_cup">eine Tasse</string>
+    <string name="timer_two_cups">zwei Tassen</string>
+    <string name="timer_remove">Timer löschen</string>
+    <string name="timer_success">erfolgreich gesendet</string>
+
     <string name="save">speichern</string>
     <string name="back">zurück</string>
 </resources>

@@ -12,6 +12,18 @@
     <string name="add_ip">add ip</string>
     <string name="settings">settings</string>
     <string name="address">ip address</string>
+
+    <string name="timer">timer</string>
+    <string name="add_timer">add timer</string>
+    <string name="timer_activated">activated</string>
+    <string name="timer_deactivated">deactivated</string>
+    <string name="timer_powerOn">power on</string>
+    <string name="timer_daily">daily</string>
+    <string name="timer_one_cup">make one cup</string>
+    <string name="timer_two_cups">make two coups</string>
+    <string name="timer_remove">remove</string>
+    <string name="timer_success">sending success</string>
+
     <string name="save">save</string>
     <string name="back">back</string>
 </resources>

@@ -334,21 +334,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, AsyncWebSocket
       
       //check json object success
       if(!error){
-        if(jsonDocument.containsKey("get")){
-          String msg = jsonDocument["get"].as<String>();
-          
-          //send state
-          if (msg.equals("INFO")) {  
-            socket.text(client->id(), getState().as<String>()); 
-          }      
-        
-          //send timers
-          if (msg.equals("getTimers")) {  
-            socket.text(client->id(), getTimerAsJson().as<String>());              //send timer as json string to client
-          }
-        }
-
-        else if(jsonDocument.containsKey("press_button")){
+        if(jsonDocument.containsKey("press_button")){
           String press_button = jsonDocument["press_button"].as<String>();
 
           //if msg is "power" press power button

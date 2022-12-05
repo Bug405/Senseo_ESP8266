@@ -43,7 +43,7 @@ String lang = "ger";                                                            
 //config files
 String configWifI = "/configWifI.json";                                               //wifi config file name
 String configLang = "/configFile.json";                                               //language config file name
-String configTimers = "/configTimers.json";                                           //language config file name
+String configTimers = "/configTimers.json";                                           //timer config file name
 
 int led = LED_BUILTIN;                                                                //led
 
@@ -195,6 +195,8 @@ void saveConfig(String lang, int offset){                                       
 //get timer as json
 DynamicJsonDocument getTimerAsJson(){
   DynamicJsonDocument document(1024);
+  document["null"] = "null";
+
   JsonArray array = document.createNestedArray("timerArray");                       //build json array
 
   for(int i = 0; i < timerLength; i++){
@@ -324,7 +326,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, AsyncWebSocket
     }
 
     //send timers
-    if (strcmp((char*)data, "getTimers") == 0) {  
+    else if (strcmp((char*)data, "getTimers") == 0) {  
        socket.text(client->id(), getTimerAsJson().as<String>());                   //send timer as json string to client
     }
 
@@ -511,7 +513,7 @@ void loop() {
     digitalWrite(oneCup_button, HIGH);                                             //release one cup button 
   }
   
-  //holdtwo cups button for 300 ms
+  //hold two cups button for 300 ms
   if(!digitalRead(twoCups_button)){
     Serial.println("press two cups button");
 
@@ -523,16 +525,29 @@ void loop() {
   if(timeClient.isTimeSet()){   
     for(int i = 0; i < timerLength; i++){
       if(timers[i].isActive()){
+
+        //press power button for 300 ms
         if(timers[i].pressPowerOn(senseo_state)){
           digitalWrite(power_button, LOW);                                         //timer press power button 
         }
 
-        if(timers[i].pressOneCupButton(senseo_state)){
-          digitalWrite(oneCup_button, LOW);                                        //timer press onr cup button 
+        if(timers[i].isHeatingTimerMax()){
+          Serial.println("heattime max: set wait for ready back");                 //check max time ready state
         }
 
-        if(timers[i].pressTwoCupsButton(senseo_state)){
-          digitalWrite(twoCups_button, LOW);                                       //timer press two cups button 
+        //press power one cup for 300 ms
+        if(timers[i].pressOneCupButton(senseoState.isSecureReady())){
+          digitalWrite(oneCup_button, LOW);                                        //timer press one cup button         
+        }
+
+        //press two cups button for 300 ms
+        if(timers[i].pressTwoCupsButton(senseoState.isSecureReady())){
+          digitalWrite(twoCups_button, LOW);                                       //timer press two cups button
+        }
+        
+        //update timer config file if active state change
+        if(timers[i].isSaveFile()){
+          configFile.saveJsonFile(configTimers, getTimerAsJson());                 //update timers config file
         }
       }
     }

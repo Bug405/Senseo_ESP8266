@@ -19,6 +19,8 @@ class SenseoTimer{
     
     boolean edgeDetection;                                                              //edge detection for power button
 
+    boolean saveFile;
+
     int makeCoffeeWhenReady;                                                            //0 = false & reset timer; 1 = false & daly; 2 = one cup; 3 = two cups
 
     int hour;                                                                           //hour
@@ -87,6 +89,8 @@ class SenseoTimer{
     boolean pressPowerOn(String state){
         powerButtonIsPressed = false;
 
+        saveFile = false;
+
         if(timeClient->getHours() == hour && 
            timeClient->getMinutes() == minute && 
            timeClient->getSeconds() == 0){
@@ -101,6 +105,7 @@ class SenseoTimer{
               
               if(makeCoffeeWhenReady == 0){
                 active = false;
+                saveFile = true;
               }
               
               if(state.equals("off")){
@@ -112,21 +117,28 @@ class SenseoTimer{
         }else{
           edgeDetection = false;
         }
-
-        if(waitForReady && millis() - startTime >= 2 * 60 * 1000){
-          Serial.println("heattime max: set wait for ready back");
-          
-          waitForReady = false;
-        }
            
         return powerButtonIsPressed;
     }
+    
+    //check heating time max (over 2 minutes) 
+    boolean isHeatingTimerMax(){
+      if(waitForReady && millis() - startTime >= 2 * 60 * 1000){          
+        waitForReady = false;
+        active = false;
+        saveFile = true;
+        return true;
+      }
+      
+      return false;
+    }
 
     //press one cup button
-    boolean pressOneCupButton(String state){
-        if(waitForReady && makeCoffeeWhenReady == 2 && state.equals("ready")){
+    boolean pressOneCupButton(boolean ready){
+        if(waitForReady && makeCoffeeWhenReady == 2 && ready){
             waitForReady = false;
             active = false;
+            saveFile = true;
             return true;
         }
 
@@ -134,14 +146,20 @@ class SenseoTimer{
     }
 
     //press two cups button
-    boolean pressTwoCupsButton(String state){
-        if(waitForReady && makeCoffeeWhenReady == 3 && state.equals("ready")){
+    boolean pressTwoCupsButton(boolean ready){
+        if(waitForReady && makeCoffeeWhenReady == 3 && ready){
             waitForReady = false;
             active = false;
+            saveFile = true;
             return true;
         }
 
         return false;
+    }
+
+    //save file
+    boolean isSaveFile(){
+      return saveFile;
     }
 
     DynamicJsonDocument getTimerAsJson(){

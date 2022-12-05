@@ -10,6 +10,8 @@ class SenseoState{
   
   long prev = 0;                                         //prev time
 
+  boolean secureReady;
+
   //get new state of input power LED
   bool valueListener(int input){
     bool value = digitalRead(input);                     //read input
@@ -34,6 +36,11 @@ class SenseoState{
   void setSenseoState(String state){
     senseo_state = state;
   }
+
+  //is secure ready
+  boolean isSecureReady(){
+    return secureReady;
+  }
   
   //get state of senseo  
   String getState(int input){
@@ -48,12 +55,18 @@ class SenseoState{
     long time = millis() - prev;                         //time differnce
    
     if(value){
+      if(time > 5000){
+        secureReady = true;                              //secure ready
+      }
+
       if(time > 1500){
         return "ready";                                  //ready
       }
-    } 
+    }
     
     else {
+      secureReady = false;
+
       if(time > 3000){
         return "off";                                    //off
       }

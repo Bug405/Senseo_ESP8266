@@ -42,6 +42,8 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
 
     private String port = "80";
 
+    private boolean longClick;
+
     @Override
     protected void onCreate(Bundle savedInstanceState){
         super.onCreate(savedInstanceState);
@@ -78,10 +80,12 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         Button btn_oneCup = findViewById(R.id.btn_oneCup);
         setButtonWidth(btn_oneCup);
         btn_oneCup.setOnClickListener(oneCupListener);
+        btn_oneCup.setOnLongClickListener(oneCupLongClickListener);
 
         Button btn_twoCups = findViewById(R.id.btn_twoCups);
         setButtonWidth(btn_twoCups);
         btn_twoCups.setOnClickListener(twoCupsListener);
+        btn_twoCups.setOnLongClickListener(twoCupsLongClickListener);
     }
 
     //options menu
@@ -173,7 +177,7 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         JSONObject object = new JSONObject();
 
         //send msg to server
-        if(client != null){
+        if(client != null && !longClick){
             try {
                 object.put("press_button", "one_cup");
                 client.sendMessage(object.toString());
@@ -181,6 +185,9 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
                 ex.printStackTrace();
             }
         }
+
+        //reset long click
+        longClick = false;
 
         //if client is not connect, show toast "not connected"
         if(getTitle().toString().contains(getString(R.string.connected))){
@@ -193,9 +200,33 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         JSONObject object = new JSONObject();
 
         //send msg to server
-        if(client != null){
+        if(client != null && !longClick){
             try {
                 object.put("press_button", "two_cups");
+                client.sendMessage(object.toString());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        //reset long click
+        longClick = false;
+
+        //if client is not connect, show toast "not connected"
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
+        }
+    };
+
+    //make one cup of coffee when ready
+    private View.OnLongClickListener oneCupLongClickListener = e-> {
+        JSONObject object = new JSONObject();
+        longClick = true;
+
+        //send msg to server
+        if(client != null){
+            try {
+                object.put("press_button", "one_cup_whenReady");
                 client.sendMessage(object.toString());
             } catch (JSONException ex) {
                 ex.printStackTrace();
@@ -206,6 +237,32 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
         if(getTitle().toString().contains(getString(R.string.connected))){
             Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
         }
+
+        return false;
+    };
+
+    //make two cups of coffee when ready
+    private View.OnLongClickListener twoCupsLongClickListener = e-> {
+        JSONObject object = new JSONObject();
+
+        longClick = true;
+
+        //send msg to server
+        if(client != null){
+            try {
+                object.put("press_button", "two_cups_whenReady");
+                client.sendMessage(object.toString());
+            } catch (JSONException ex) {
+                ex.printStackTrace();
+            }
+        }
+
+        //if client is not connect, show toast "not connected"
+        if(getTitle().toString().contains(getString(R.string.connected))){
+            Toast.makeText(getApplicationContext(), getString(R.string.connected), Toast.LENGTH_LONG).show();
+        }
+
+        return false;
     };
 
     @Override
@@ -234,6 +291,16 @@ public class MainActivity extends AppCompatActivity implements Client.ClientList
                 //state failure (no water)
                 else if(state.equals("failure")){
                     setPowerButton(Color.RED);
+                }
+
+                //show toast one cup when ready
+                else if(state.equals("makeOneCupWhenReady")){
+                    runOnUiThread(()->Toast.makeText(getApplicationContext(), getString(R.string.make_one_cup), Toast.LENGTH_LONG).show());
+                }
+
+                //show toast two cups when ready
+                else if(state.equals("makeTwoCupsWhenReady")){
+                    runOnUiThread(()->Toast.makeText(getApplicationContext(), getString(R.string.make_two_cups), Toast.LENGTH_LONG).show());
                 }
             }
 

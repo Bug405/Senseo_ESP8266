@@ -7,6 +7,9 @@
     <string name="one_cup">eine Tasse</string>
     <string name="two_cups">zwei Tassen</string>
 
+    <string name="make_one_cup">mache eine Tasse wenn bereit</string>
+    <string name="make_two_cups">mache zwei Tassen wenn bereit</string>
+
     <string name="find_senseo">suche Senseo</string>
     <string name="exception_text">Senseo nicht im Netzwerk gefunden</string>
     <string name="add_ip">IP einfügen</string>

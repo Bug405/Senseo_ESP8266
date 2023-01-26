@@ -127,6 +127,7 @@ class SenseoTimer{
         waitForReady = false;
         active = false;
         saveFile = true;
+        
         return true;
       }
       

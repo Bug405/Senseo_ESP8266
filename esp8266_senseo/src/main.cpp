@@ -9,6 +9,7 @@
 #include <WiFiUdp.h>
 #include "SenseoState.h"
 #include "ConfigFile.h"
+#include <MakeCoffee.h>
 #include <SenseoTimer.h>
 
 
@@ -51,6 +52,8 @@ int state_input = 4;                                                            
 int power_button = 14;                                                                //gpio 14 (D5) power button
 int oneCup_button = 12;                                                               //gpio 12 (D6) one cup button
 int twoCups_button = 13;                                                              //gpio 13 (D7) two cups button
+
+MakeCoffee makeCoffee;
 
 SenseoState senseoState;                                                              //init the senseo state class
 
@@ -342,6 +345,7 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, AsyncWebSocket
           //if msg is "power" press power button
           //for 300 ms
           if (press_button.equals("power")) { 
+            makeCoffee.chancel();                                                  //chancel make coffe when ready 
             digitalWrite(power_button, LOW);                                       //press power button
           }
 
@@ -355,6 +359,22 @@ void handleWebSocketMessage(void *arg, uint8_t *data, size_t len, AsyncWebSocket
           //for 300 ms
           else if (press_button.equals("two_cups")) {  
             digitalWrite(twoCups_button, LOW);                                       //press two cups button
+          }
+
+          //if msg is "one_cup_whenReady" make one cup when ready
+          else if (press_button.equals("one_cup_whenReady")) {  
+            makeCoffee.makeOneCupCoffee(true);                                       //make one cup when ready
+            notifyClients("makeOneCupWhenReady");
+
+            Serial.println("make one cup coffe when ready");
+          }
+
+          //if msg is "two_cups_whenReady" make two cups when ready
+          else if (press_button.equals("two_cups_whenReady")) {  
+            makeCoffee.makeTwoCupsCoffee(true);                                      //make two cups when ready
+            notifyClients("makeTwoCupsWhenReady");
+            
+            Serial.println("make two cups coffe when ready");
           }
         }
                                                                 
@@ -521,6 +541,25 @@ void loop() {
     digitalWrite(twoCups_button, HIGH);                                            //release two cups button 
   }
 
+  //make coffee when ready
+  if(makeCoffee.pressPowerOn(senseo_state)){
+    digitalWrite(power_button, LOW);                                              //make coffee power button 
+  }
+
+  if(makeCoffee.isHeatingTimerMax()){
+    Serial.println("heattime max: set wait for ready back");                      //check max time ready state
+  }
+
+  //press power one cup for 300 ms
+  if(makeCoffee.pressOneCupButton(senseoState.isSecureReady())){
+    digitalWrite(oneCup_button, LOW);                                             //make coffee one cup button         
+  }
+
+  //press two cups button for 300 ms
+  if(makeCoffee.pressTwoCupsButton(senseoState.isSecureReady())){
+    digitalWrite(twoCups_button, LOW);                                            //make coffee two cups button
+  }
+  
   //timer
   if(timeClient.isTimeSet()){   
     for(int i = 0; i < timerLength; i++){

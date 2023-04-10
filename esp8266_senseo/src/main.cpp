@@ -43,6 +43,8 @@ AsyncMqttClient mqttClient;
 MqttMessage mqtt;
 Ticker mqttReconnectTimer;
 
+long checkMqqt;
+
 String mqtt_host = "";
 int mqtt_port = 1883;
 
@@ -279,6 +281,8 @@ void setup() {
 
   starttime = millis();
 
+  checkMqqt = millis();
+
   pinMode(led, OUTPUT);                                                            //init LED
 
   pinMode(power_button, OUTPUT);                                                   //init power button output
@@ -337,6 +341,14 @@ void loop() {
     restartMqtt = false; 
     initMqtt();                                                                    //restart mqtt client if new settings arrive
   }
+  
+  if(millis() - checkMqqt >= 5 * 60 * 1000){                                       //check mqtt cenection state every 5 minutes
+    if(!mqttClient.connected() && useMqtt){
+      initMqtt();                                                                  //if mqtt is not connectet -> restart client
+    }
+
+    checkMqqt = millis();
+  }
 
   ArduinoOTA.handle();                                                             //handle ota update
 
@@ -349,7 +361,7 @@ void loop() {
   //if senseo has a new state, send the state to all connected clients  
   if(!senseo_state.equals(state)){
     senseoState.setSenseoState(senseo_state);                                      //set new state in senseo
-    notifyClients(senseo_state);                                         //send new state
+    notifyClients(senseo_state);                                                   //send new state
 
     if(mqttClient.connected()){
       mqttClient.publish(stateTopic.c_str(), 1, true, senseo_state.c_str());

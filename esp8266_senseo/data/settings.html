@@ -47,6 +47,11 @@
 			cursor: pointer;
 			float: right;
 		}
+
+    input[type="submit"]:active, #apk_button:active {
+			background-color: gray;
+			color: white;
+		}
     
     #language_button {
 			background-color: #4CAF50;
@@ -165,7 +170,13 @@ mqttForm.addEventListener('submit', (event) => {
   var mqtt_pwd = document.getElementById('mqtt_pwd').value;
   var use_mqtt = document.getElementById('use_mqtt').checked;
   
-  var data = { null:"null", topic:topic, mqtt_host:mqtt_host, mqtt_port:mqtt_port,  mqtt_user:mqtt_user, mqtt_pwd:mqtt_pwd, use_mqtt:use_mqtt };
+  var data;
+
+  if(mqtt_pwd.length > 0)
+    data = { null:"null", topic:topic, mqtt_host:mqtt_host, mqtt_port:mqtt_port, mqtt_user:mqtt_user, mqtt_pwd:mqtt_pwd, use_mqtt:use_mqtt };
+  else{
+    data = { null:"null", topic:topic, mqtt_host:mqtt_host, mqtt_port:mqtt_port, mqtt_user:mqtt_user, use_mqtt:use_mqtt };
+  }
   
   websocket.send(JSON.stringify(data));
   console.log("send msg to server: wifi settings" + JSON.stringify(data));  
